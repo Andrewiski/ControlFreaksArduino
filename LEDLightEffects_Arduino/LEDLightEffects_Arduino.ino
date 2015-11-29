@@ -10,14 +10,14 @@
 #define I2C_Slave_Address 0x26
 int pixelCount = 60;
  
-Adafruit_NeoPixel pixels = Adafruit_NeoPixel(pixelCount, NeoPixelDataPin);
+Adafruit_NeoPixel pixels = Adafruit_NeoPixel(pixelCount, NeoPixelDataPin, NEO_GRB + NEO_KHZ800);
  
 uint8_t  mode=254,
          red = 0x00,
          green = 0xFF,
          blue = 0x00,
-         brightness = 0xFF,
-         modeCount = 2,
+         brightness = 0x40,
+         modeCount = 4,
          offset = 0; // Position of spinny eyes
       
 uint32_t color  = 0x00FF00; // Start Green
@@ -38,15 +38,24 @@ void setup() {
   pixels.begin();
   pixels.setBrightness(brightness); // 1/3 brightness
   prevTime = millis();
-  
+  Serial.println("Setup Complete");
+  Serial.println("Control Freaks LED I2C Slave");
+  Serial.println("Accepts Data Serial or I2C ");
+  Serial.println("Must add space after the comma to work correctly");
+  Serial.println("addressreg, mode, red, green, blue, brightness");
+  Serial.println("0, 2, 255, 255, 0, 255");
+  Serial.println("1, 255, 0, 0 // just set red, green, blue");
+  Serial.println("3, 255 //set Blue to 255");
 }
- 
+
+
+
 void loop() {
   uint8_t  i;
  
   //readDigitalIoPins();
   //doAutoModeChange();
-  
+  checkForSerialData();
  
   switch(mode) {
     case 0: //all lights off
@@ -56,6 +65,9 @@ void loop() {
         }
         pixels.show();
         modeComplete = true;
+        Serial.println("Mode 0 turn all lights off");
+      }else{
+        delay(50);
       }
       break;
    case 1: //all lights on steady
@@ -65,6 +77,9 @@ void loop() {
           }
           pixels.show();
           modeComplete = true;
+          Serial.println("Mode 1 turn all lights on");
+      }else{
+        delay(50);
       }
       break;
   
@@ -74,8 +89,12 @@ void loop() {
       pixels.show();
       delay(10);
       pixels.setPixelColor(i, 0);
+      if(modeComplete == false){
+        Serial.println("Mode 2 random sparks");
+        modeComplete = true;
+      }
       break;
- 
+      
    case 3: // Spinny wheels (8 LEDs on at a time)
       for(i=0; i<(pixelCount/2); i++) {
         uint32_t c = 0;
@@ -86,6 +105,10 @@ void loop() {
       pixels.show();
       offset++;
       delay(50);
+      if(modeComplete == false){
+        Serial.println("Mode 3 Spinny Wheels");
+        modeComplete = true;
+      }
       break;
     case 4: // Spinny wheels (8 LEDs on at a time)
       for(i=0; i<(pixelCount/2); i++) {
@@ -101,18 +124,23 @@ void loop() {
     case 254:
       //we start in the mode which turns on first three leds red, green, blue so we we know it has started
       if (modeComplete == false){
-        pixels.setPixelColor(1, 0xFF0000);
-        pixels.setPixelColor(2, 0x00FF00);
-        pixels.setPixelColor(3, 0x0000FF);
+        pixels.setPixelColor(0, 0xFF0000);
+        pixels.setPixelColor(1, 0x00FF00);
+        pixels.setPixelColor(2, 0x0000FF);
         pixels.show();
+        if(modeComplete == false){
+          Serial.println("Mode 254 turn on first 3 RGB");
+          modeComplete = true;
+        }
         modeComplete = true;
+      }
+      if (modeComplete == true){
+        //add a delay so we don't wind our loop to tight
+        delay(50);
       }
       break;
   }
-    if (modeComplete == true){
-      //add a delay so we don't wind our loop to tight
-      delay(50);
-    }
+    
   
 }
 
@@ -140,13 +168,22 @@ void receiveEvent(int howMany) {
     if(Wire.available()>1) { 
       //its a write to a register
       dataPosition = Wire.read();
-      
+      Serial.println("dataposition " + String(dataPosition));
     }
     while (Wire.available() > 0) { // loop through all the data
       byte byteData = Wire.read();
-      
+      Serial.println("dataposition " + String(dataPosition) + ":" + String(byteData));
       receivedData = true;
-      switch(dataPosition){
+      setData(dataPosition, byteData);
+      dataPosition++;
+    }
+    Serial.println("I2C Changed values color:" + String(color,HEX) + ", mode:" + String(mode) + ", red:" + String(red) + ", green:" + String(green) + ", blue:" + String(blue)  + ", brightness:" + String(brightness));
+}
+
+
+void setData(byte dataPosition, byte byteData){
+  Serial.println("setData( " + String(dataPosition) + "," + String(byteData) + ")");
+  switch(dataPosition){
         case 0: //first comes a zero
           mode = byteData;
           if (mode == 255){
@@ -160,27 +197,30 @@ void receiveEvent(int howMany) {
           //if invalid mode turn off
           if (mode > modeCount){
             mode = 0;
+            Serial.println("Mode > modeCount! mode = 0");
           }
+          Serial.println("mode:" + String(mode) + "," + String(byteData));
           break;
         case 1: //second comes red
             red = byteData;
             color = getColor(red,green,blue);
+            Serial.println("red:" + String(color, HEX) + "," +String( byteData));
           break;
         case 2: //third comes green
             green = byteData;
             color = getColor(red,green,blue);
+            Serial.println("green:" + String(color, HEX) + "," + String(byteData));
           break;
         case 3: //forth comes blue
             blue = byteData;
+            Serial.println("blue:" + String(color, HEX) + "," + String(byteData));
             color = getColor(red,green,blue);
           break;
         case 4: //fith comes brightness
           brightness = byteData;
+          Serial.println("brightness:" + String(byteData));
           break;
       }
-      dataPosition++;
-    }
-  
 }
 
 boolean lastChangeMode = false;
@@ -226,6 +266,32 @@ void  doAutoModeChange() {
       modeComplete = false;
     }
   }
+}
+
+byte serialbuffer[6];
+void checkForSerialData(){
+    int counter = 0;
+    int dataPosition = 0;
+    while (Serial.available() > 0) {
+
+      int dataByte = Serial.parseInt();
+      dataByte =  constrain(dataByte,0,255);
+      Serial.println("got " + String(dataByte));
+      serialbuffer[counter] = (byte) dataByte;
+      counter++;
+      // look for the newline. That's the end of your
+      // sentence:
+      if (Serial.read() == '\n' || Serial.read() == '\r') {
+          dataPosition =  serialbuffer[0];
+          
+          for(int i = 1; i<counter; i++){
+              byte byteValue = serialbuffer[i];
+              setData(dataPosition, byteValue);
+              dataPosition++;
+          }
+           Serial.println("Serial Changed values color:" + String(color,HEX) + ", mode:" + String(mode) + ", red:" + String(red) + ", green:" + String(green) + ", blue:" + String(blue)  + ", brightness:" + String(brightness));   
+      }
+    }
 }
 
 
