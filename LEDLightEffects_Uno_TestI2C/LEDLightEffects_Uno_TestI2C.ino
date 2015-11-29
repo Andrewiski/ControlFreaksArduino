@@ -1,4 +1,5 @@
 // Writes data to an I2C/TWI slave device
+// we use this to test i2c control from the robot
 // Slave Device is the Control Freaks LED Light Arduino
 
 // Created 28 November 2015
