@@ -1,5 +1,7 @@
-// Low power NeoPixel goggles example.  Makes a nice blinky display
-// with just a few LEDs on at any time.
+// Arduino program to control Robot Lights fro Vicksburg Middle School Control Freaks
+// accepts commands via serial and i2c so it can be controlled by the robot remotely
+// intial creation by adevries at digtialexample.com 11/26/2015
+// updated and maintined by connor at digitalexample.com
 
 #include <Adafruit_NeoPixel.h>
 #define NeoPixelDataPin 6
