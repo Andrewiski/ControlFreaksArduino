@@ -5,14 +5,16 @@
 
 #include <Adafruit_NeoPixel.h>
 #define NeoPixelDataPin 6
+#define NeoPixelDataPin2 5
 #include <Wire.h>
 
 #define ModeChangePin 3
 #define ColorChangePin 4
 #define I2C_Slave_Address 0x26
-int pixelCount = 60;
+int pixelCount = 8;
  
-Adafruit_NeoPixel pixels = Adafruit_NeoPixel(pixelCount, NeoPixelDataPin, NEO_GRB + NEO_KHZ800);
+Adafruit_NeoPixel pixels = Adafruit_NeoPixel(pixelCount * 2, NeoPixelDataPin, NEO_GRB + NEO_KHZ800);
+Adafruit_NeoPixel pixels2 = Adafruit_NeoPixel(pixelCount, NeoPixelDataPin2, NEO_GRB + NEO_KHZ800);
  
 uint8_t  mode=254,
          red = 0x00,
@@ -21,7 +23,7 @@ uint8_t  mode=254,
          brightness = 0x40,
          modeCount = 4,
          offset = 0; // Position of spinny eyes
-      
+uint32_t rainbowColor = 0x00FF00;      
 uint32_t color  = 0x00FF00; // Start Green
 uint32_t prevTime;
 boolean allModes = false;
@@ -39,6 +41,8 @@ void setup() {
   Serial.begin(9600);           // start serial for output
   pixels.begin();
   pixels.setBrightness(brightness); // 1/3 brightness
+  pixels2.begin();
+  pixels2.setBrightness(brightness); // 1/3 brightness
   prevTime = millis();
   Serial.println("Setup Complete");
   Serial.println("Control Freaks LED I2C Slave");
@@ -64,8 +68,11 @@ void loop() {
       if (modeComplete == false){
         for(i=0; i<pixelCount; i++) {
           pixels.setPixelColor(i, 0);
+          pixels.setPixelColor(i+pixelCount, 0);
+          pixels2.setPixelColor(i, 0);
         }
         pixels.show();
+        pixels2.show();
         modeComplete = true;
         Serial.println("Mode 0 turn all lights off");
       }else{
@@ -76,8 +83,11 @@ void loop() {
        if (modeComplete == false){
           for(i=0; i <pixelCount; i++) {
             pixels.setPixelColor(i, color);
+            pixels.setPixelColor(i + pixelCount, color);
+            pixels2.setPixelColor(i, color);
           }
           pixels.show();
+          pixels2.show();
           modeComplete = true;
           Serial.println("Mode 1 turn all lights on");
       }else{
@@ -88,7 +98,10 @@ void loop() {
    case 2: // Random sparks - just one LED on at a time!
       i = random(pixelCount);
       pixels.setPixelColor(i, color);
+      pixels.setPixelColor(i + pixelCount, color);
       pixels.show();
+      pixels2.setPixelColor(i, color);
+      pixels2.show();
       delay(10);
       pixels.setPixelColor(i, 0);
       if(modeComplete == false){
@@ -103,25 +116,36 @@ void loop() {
         if(((offset + i) & 7) < 2) c = color; // 4 pixels on...
         pixels.setPixelColor(   i, c); // First eye
         pixels.setPixelColor(pixelCount-i, c); // Second eye (flipped)
+        pixels.setPixelColor(pixelCount-(i+pixelCount), c); // Second eye (flipped)
+        pixels2.setPixelColor(   i, c); // First eye
+        pixels2.setPixelColor(pixelCount-i, c); // Second eye (flipped)
       }
       pixels.show();
       offset++;
-      delay(50);
+      delay(100);
       if(modeComplete == false){
         Serial.println("Mode 3 Spinny Wheels");
         modeComplete = true;
       }
       break;
-    case 4: // Spinny wheels (8 LEDs on at a time)
-      for(i=0; i<(pixelCount/2); i++) {
-        uint32_t c = 0;
-        if(((offset + i) & 7) < 2) c = color; // 4 pixels on...
-        pixels.setPixelColor(   i, c); // First eye
-        pixels.setPixelColor(pixelCount-i, c); // Second eye (flipped)
+    case 4: // rainbow
+      rainbowColor = rainbowColor << 8;
+        if (rainbowColor == 0){
+          rainbowColor = 0xFF;
+        }
+      for(i=0; i<(pixelCount); i++) {
+        
+        pixels.setPixelColor(i, rainbowColor);
+        pixels.setPixelColor(i + pixelCount, rainbowColor);
+        pixels2.setPixelColor(i, rainbowColor); // Second eye (flipped)
+        rainbowColor = rainbowColor << 8;
+        if (rainbowColor == 0){
+          rainbowColor = 0xFF;
+        }
       }
       pixels.show();
-      offset++;
-      delay(50);
+      pixels2.show();
+      delay(250);
       break;
     case 254:
       //we start in the mode which turns on first three leds red, green, blue so we we know it has started
@@ -129,7 +153,32 @@ void loop() {
         pixels.setPixelColor(0, 0xFF0000);
         pixels.setPixelColor(1, 0x00FF00);
         pixels.setPixelColor(2, 0x0000FF);
+        pixels.setPixelColor(3, 0xFF0000);
+        pixels.setPixelColor(4, 0x00FF00);
+        pixels.setPixelColor(5, 0x0000FF);
+        pixels.setPixelColor(6, 0xFF0000);
+        pixels.setPixelColor(7, 0x00FF00);
+        pixels.setPixelColor(8, 0x0000FF);
+        pixels.setPixelColor(9, 0xFF0000);
+        pixels.setPixelColor(10, 0x00FF00);
+        pixels.setPixelColor(11, 0x0000FF);
+        pixels.setPixelColor(12, 0xFF0000);
+        pixels.setPixelColor(13, 0x00FF00);
+        pixels.setPixelColor(14, 0x0000FF);
+        pixels.setPixelColor(15, 0xFF0000);
+        pixels.setPixelColor(16, 0x00FF00);
+        pixels2.setPixelColor(0, 0xFF0000);
+        pixels2.setPixelColor(1, 0x00FF00);
+        pixels2.setPixelColor(2, 0x0000FF);
+        pixels2.setPixelColor(3, 0xFF0000);
+        pixels2.setPixelColor(4, 0x00FF00);
+        pixels2.setPixelColor(5, 0x0000FF);
+        pixels2.setPixelColor(6, 0xFF0000);
+        pixels2.setPixelColor(7, 0x00FF00);
+        pixels2.setPixelColor(8, 0x0000FF);
+        
         pixels.show();
+        pixels2.show();
         if(modeComplete == false){
           Serial.println("Mode 254 turn on first 3 RGB");
           modeComplete = true;
