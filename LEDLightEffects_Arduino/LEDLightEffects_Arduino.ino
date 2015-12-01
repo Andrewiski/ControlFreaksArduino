@@ -8,8 +8,12 @@
 #define NeoPixelDataPin2 5
 #include <Wire.h>
 
-#define ModeChangePin 3
-#define ColorChangePin 4
+#define ModeChangePin 11
+#define ColorBluePin 10
+#define ColorGreenPin 9
+#define ColorRedPin 8
+
+
 #define I2C_Slave_Address 0x26
 int pixelCount = 8;
  
@@ -31,10 +35,15 @@ boolean modeComplete = false;
 
 void setup() {
 
-  pinMode(ModeChangePin, INPUT_PULLUP); // If Low We Change The Mode
+  pinMode(ModeChangePin, INPUT_PULLUP); // If toggled We Change The Mode
   digitalWrite(ModeChangePin, HIGH);       // turn on pullup resistors 
-  pinMode(ColorChangePin, INPUT_PULLUP); // If Low We Change The Color
-  digitalWrite(ColorChangePin, HIGH);       // turn on pullup resistors
+  pinMode(ColorRedPin, INPUT_PULLUP); // If Low make red FF
+  digitalWrite(ColorRedPin, HIGH);       // turn on pullup resistors
+  pinMode(ColorGreenPin, INPUT_PULLUP); // If Low We Make Green FF
+  digitalWrite(ColorGreenPin, HIGH);       // turn on pullup resistors
+  pinMode(ColorBluePin, INPUT_PULLUP); // If Low We Make Blue FF
+  digitalWrite(ColorBluePin, HIGH);       // turn on pullup resistors
+
   Wire.begin(I2C_Slave_Address);
   Wire.onRequest(requestEvent);
   Wire.onReceive(receiveEvent); // register event
@@ -59,8 +68,8 @@ void setup() {
 void loop() {
   uint8_t  i;
  
-  //readDigitalIoPins();
-  //doAutoModeChange();
+  readDigitalIoPins();
+  doAutoModeChange();
   checkForSerialData();
  
   switch(mode) {
@@ -279,7 +288,10 @@ boolean lastChangeColor = false;
 
 void readDigitalIoPins(){
   boolean changeMode = (digitalRead(ModeChangePin) == LOW);
-  boolean changeColor = (digitalRead(ColorChangePin) == LOW);
+  boolean ColorRed = (digitalRead(ColorRedPin) == LOW);
+  boolean ColorGreen = (digitalRead(ColorGreenPin) == LOW);
+  boolean ColorBlue = (digitalRead(ColorBluePin) == LOW);
+  
   if (changeMode != lastChangeMode){
     lastChangeMode = changeMode;
     allModes = false;
@@ -288,16 +300,19 @@ void readDigitalIoPins(){
     if(mode > modeCount) {                 // End of modes?
       mode = 1;                    // Start modes over
     }
+    color = getColor((ColorRed ? 0xFF : 0x00), (ColorGreen ? 0xFF : 0x00), (ColorBlue ? 0xFF : 0x00));
+    Serial.println("digitalio:" + String(mode) + ":" + String(ColorRed) + ":" +  String(ColorGreen) + ":" + String(ColorBlue) );
   }
-  if (changeColor != lastChangeColor){
-    lastChangeColor = changeColor;
-    if(color == 0xFF0000){
-      color = 0x0000FF; // if red make it blue
-    }else{
-      color = 0xFF0000; // Reset to red
-      
-    } 
-  }
+//  if (changeColor != lastChangeColor){
+//    lastChangeColor = changeColor;
+//    if(color == 0xFF0000){
+//      color = 0x0000FF; // if red make it blue
+//    }else{
+//      color = 0xFF0000; // Reset to red
+//      
+//    } 
+//  }
+   
 }
 
 void  doAutoModeChange() {
